@@ -1,0 +1,104 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${AUTH_DB_URL}
+    username: ${AUTH_DB_USERNAME}
+    password: ${AUTH_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        globally_quoted_identifiers: true
+        jdbc:
+          time_zone: UTC
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: 1800000
+  refresh-token-expiration: 604800000
+
+otp:
+  expiry-minutes: 5
+  length: 6
+  max-attempts: 5
+  rate-limit:
+    capacity: 3
+    window-minutes: 10
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        endpoint: ${MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT:${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}}
+      enabled: ${MANAGEMENT_TRACING_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      access: unrestricted
+
+logging:
+  level:
+    com.authservice: DEBUG
+    org.springframework.security: INFO
+
+feign:
+  circuitbreaker:
+    enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+
+app:
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}
+      full-name: ${BOOTSTRAP_ADMIN_FULL_NAME:Admin}
+      email: ${BOOTSTRAP_ADMIN_EMAIL:admin@vaultpay.local}
+      phone: ${BOOTSTRAP_ADMIN_PHONE:9999999999}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:Admin@123}

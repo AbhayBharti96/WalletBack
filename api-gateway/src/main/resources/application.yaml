@@ -1,0 +1,180 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "*"
+                allowedMethods: [ GET, POST, PUT, DELETE, OPTIONS, PATCH ]
+                allowedHeaders: "*"
+                exposedHeaders: [ Authorization ]
+                maxAge: 3600
+
+          routes:
+
+            # ── AUTH SERVICE (PUBLIC) ─────────────────────────────
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: auth-cb
+                    fallbackUri: forward:/fallback/auth
+
+            # ── USER SERVICE ──────────────────────────────────────
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/**, /api/kyc/**, /api/admin/**
+              filters:
+                - JwtAuthenticationFilter   # ✅ FIXED
+                - name: CircuitBreaker
+                  args:
+                    name: user-cb
+                    fallbackUri: forward:/fallback/user
+                - name: Retry
+                  args:
+                    retries: 2
+                    statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
+                    methods: GET
+
+            # ── WALLET SERVICE ────────────────────────────────────
+            - id: wallet-service
+              uri: lb://wallet-service
+              predicates:
+                - Path=/api/wallet/**, /api/payment/**
+              filters:
+                - JwtAuthenticationFilter   # ✅ FIXED
+                - name: CircuitBreaker
+                  args:
+                    name: wallet-cb
+                    fallbackUri: forward:/fallback/wallet
+
+            # ── REWARDS SERVICE ───────────────────────────────────
+            - id: rewards-service
+              uri: lb://rewards-service
+              predicates:
+                - Path=/api/rewards/**
+              filters:
+                - JwtAuthenticationFilter   # ✅ FIXED
+                - name: CircuitBreaker
+                  args:
+                    name: rewards-cb
+                    fallbackUri: forward:/fallback/rewards
+                - name: Retry
+                  args:
+                    retries: 2
+                    statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
+                    methods: GET
+
+            # ── ADMIN SERVICE ─────────────────────────────────────
+#            - id: admin-service
+#              uri: lb://admin-service
+#              predicates:
+#                - Path=/api/admin/**
+#              filters:
+#                - JwtAuthenticationFilter   # ✅ FIXED
+#                - name: CircuitBreaker
+#                  args:
+#                    name: admin-cb
+#                    fallbackUri: forward:/fallback/admin
+
+            # ── FALLBACK ROUTE ────────────────────────────────────
+            - id: fallback-route
+              uri: http://localhost:${server.port}
+              predicates:
+                - Path=/fallback/**
+
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+# ── EUREKA ─────────────────────────────────────────────────────
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    instance-id: ${spring.application.name}:${server.port}
+
+# ── JWT ───────────────────────────────────────────────────────
+jwt:
+  secret: ${JWT_SECRET}
+
+# ── RESILIENCE4J ──────────────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      auth-cb:
+        baseConfig: default
+      user-cb:
+        baseConfig: default
+      wallet-cb:
+        baseConfig: default
+        failureRateThreshold: 30
+        waitDurationInOpenState: 15s
+      rewards-cb:
+        baseConfig: default
+      admin-cb:
+        baseConfig: default
+
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+    instances:
+      auth-cb:
+        timeoutDuration: 15s
+      wallet-cb:
+        timeoutDuration: 10s
+
+# ── ACTUATOR ──────────────────────────────────────────────────
+management:
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        endpoint: ${MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT:${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}}
+      enabled: ${MANAGEMENT_TRACING_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway, circuitbreakers, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+    prometheus:
+      access: unrestricted
+
+# ── LOGGING ───────────────────────────────────────────────────
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.loyaltyService.api_gateway: DEBUG
+    io.github.resilience4j: INFO

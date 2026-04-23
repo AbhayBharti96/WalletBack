@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: eureka-server
+
+server:
+  port: 8761
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    # Wait before evicting unresponsive instances (dev-friendly)
+    eviction-interval-timer-in-ms: 15000
+    enable-self-preservation: false   # disable in dev; enable in prod
+
+management:
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        endpoint: ${MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT:${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}}
+      enabled: ${MANAGEMENT_TRACING_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      access: unrestricted
+
+logging:
+  level:
+    com.netflix.eureka: WARN
+    com.netflix.discovery: WARN

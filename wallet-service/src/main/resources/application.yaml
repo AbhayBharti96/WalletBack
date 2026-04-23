@@ -1,0 +1,84 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: wallet-service
+  datasource:
+    url: ${WALLET_DB_URL:jdbc:postgresql://localhost:5432/wallet_db}
+    username: ${WALLET_DB_USERNAME:postgres}
+    password: ${WALLET_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: wallet-service-saga-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+jwt:
+  secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+
+wallet:
+  daily-topup-limit: 50000
+  daily-transfer-limit: 25000
+  max-daily-transfers: 10
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        endpoint: ${MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT:${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}}
+      enabled: ${MANAGEMENT_TRACING_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      access: unrestricted
+
+logging:
+  level:
+    com.loyalty.system: DEBUG
+    org.springframework.transaction: INFO
+
+razorpay:
+  key: ${RAZORPAY_KEY:}
+  secret: ${RAZORPAY_SECRET:}
