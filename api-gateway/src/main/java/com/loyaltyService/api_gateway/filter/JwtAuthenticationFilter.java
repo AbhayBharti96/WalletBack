@@ -6,6 +6,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -53,6 +54,11 @@ public class JwtAuthenticationFilter
             ServerHttpRequest request = exchange.getRequest();
 
             String path = request.getURI().getPath();
+            if (HttpMethod.OPTIONS.equals(request.getMethod())) {
+                log.debug("Skipping JWT for CORS preflight path: {}", path);
+                return chain.filter(exchange);
+            }
+
             if (path.contains("/internal/")) {
                 log.debug("Skipping JWT for internal path: {}", path);
                 return chain.filter(exchange);
@@ -93,13 +99,15 @@ public class JwtAuthenticationFilter
 
             // ── 4. Forward identity as headers to downstream services ─────────
             ServerHttpRequest mutated = request.mutate()
-                    .header("X-User-Id",    userId)
-                    .header("X-User-Role",  role   != null ? role  : "")
-                    .header("X-User-Email", email  != null ? email : "")
-                    // Prevent clients from spoofing these headers
                     .headers(h -> {
+                        h.remove("X-User-Id");
+                        h.remove("X-User-Role");
+                        h.remove("X-User-Email");
                         h.remove("X-Forwarded-User-Id");
                         h.remove("X-Forwarded-User-Role");
+                        h.set("X-User-Id", userId);
+                        h.set("X-User-Role", role != null ? role : "");
+                        h.set("X-User-Email", email != null ? email : "");
                     })
                     .build();
 

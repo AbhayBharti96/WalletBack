@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -37,6 +38,25 @@ class JwtAuthenticationFilterTest {
         GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/internal/health").build()
+        );
+
+        when(chain.filter(exchange)).thenReturn(Mono.empty());
+
+        filter.filter(exchange, chain).block();
+
+        verify(chain).filter(exchange);
+        verify(jwtValidator, never()).validateAndExtract(any());
+    }
+
+    @Test
+    void optionsPreflightSkipsValidation() {
+        JwtAuthenticationFilter filterFactory = new JwtAuthenticationFilter(jwtValidator);
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.method(HttpMethod.OPTIONS, "/api/users/me")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:3001")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                        .build()
         );
 
         when(chain.filter(exchange)).thenReturn(Mono.empty());
