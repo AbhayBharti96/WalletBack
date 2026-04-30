@@ -13,9 +13,9 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                allowedOriginPatterns: "*"
+                allowedOriginPatterns: [ http://localhost:3001, "http://127.0.0.1:[*]", https://wallet-alpha-two.vercel.app, "https://wallet-alpha-two-*.vercel.app" ]
                 allowedMethods: [ GET, POST, PUT, DELETE, OPTIONS, PATCH ]
-                allowedHeaders: [ Authorization, Content-Type, Accept, Origin, X-Requested-With, X-User-Id, X-Userid, X-User-Role, X-User-Email, ngrok-skip-browser-warning ]
+                allowedHeaders: [ Authorization, Content-Type, Accept, Origin, X-Requested-With, X-User-Id, X-Userid, X-UserRole, X-User-Role, x-userrole, X-UserEmail, X-User-Email, x-useremail, ngrok-skip-browser-warning ]
                 exposedHeaders: [ Authorization, X-User-Id, X-User-Role, X-User-Email ]
                 maxAge: 3600
 
@@ -38,7 +38,7 @@ spring:
               predicates:
                 - Path=/api/users/**, /api/kyc/**, /api/admin/**
               filters:
-                - JwtAuthenticationFilter   # ✅ FIXED
+                - JwtAuthenticationFilter
                 - name: CircuitBreaker
                   args:
                     name: user-cb
@@ -55,7 +55,7 @@ spring:
               predicates:
                 - Path=/api/wallet/**, /api/payment/**
               filters:
-                - JwtAuthenticationFilter   # ✅ FIXED
+                - JwtAuthenticationFilter
                 - name: CircuitBreaker
                   args:
                     name: wallet-cb
@@ -67,7 +67,7 @@ spring:
               predicates:
                 - Path=/api/rewards/**
               filters:
-                - JwtAuthenticationFilter   # ✅ FIXED
+                - JwtAuthenticationFilter
                 - name: CircuitBreaker
                   args:
                     name: rewards-cb
@@ -84,7 +84,7 @@ spring:
 #              predicates:
 #                - Path=/api/admin/**
 #              filters:
-#                - JwtAuthenticationFilter   # ✅ FIXED
+#                - JwtAuthenticationFilter
 #                - name: CircuitBreaker
 #                  args:
 #                    name: admin-cb

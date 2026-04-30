@@ -36,7 +36,9 @@ public class GatewaySecurityConfig {
 
     private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of(
             "http://localhost:3001",
-            "http://127.0.0.1:[*]"
+            "http://127.0.0.1:[*]",
+            "https://wallet-alpha-two.vercel.app",
+            "https://wallet-alpha-two-*.vercel.app"
     );
     private static final List<String> ALLOWED_HEADERS = List.of(
             "Authorization",
@@ -46,8 +48,12 @@ public class GatewaySecurityConfig {
             "X-Requested-With",
             "X-User-Id",
             "X-Userid",
+            "X-UserRole",
             "X-User-Role",
+            "x-userrole",
+            "X-UserEmail",
             "X-User-Email",
+            "x-useremail",
             "ngrok-skip-browser-warning"
     );
 

@@ -14,10 +14,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,17 +46,18 @@ class NotificationConsumerTest {
 
         notificationConsumer.kycEvents("event");
 
-        verify(emailService).sendHtml(eq("user@example.com"), eq("KYC Approved ✅"), anyString());
+        verify(emailService).sendHtml(eq("user@example.com"), eq("KYC Approved"), anyString());
     }
 
     @Test
-    void transferEventSendsToSenderAndReceiver() throws Exception {
+    void transferEventSendsUsefulHtmlToSenderAndReceiver() throws Exception {
         when(objectMapper.readValue("event", Map.class)).thenReturn(Map.of(
                 "event", "TRANSFER_SUCCESS",
                 "senderId", 10,
                 "receiverId", 20,
                 "amount", "250.00",
-                "balance", "900.00",
+                "senderBalance", "900.00",
+                "receiverBalance", "1150.00",
                 "reference", "TXN-123"
         ));
         when(userClient.getProfile(10L)).thenReturn(UserDTO.builder().email("sender@example.com").build());
@@ -63,12 +65,34 @@ class NotificationConsumerTest {
 
         notificationConsumer.walletEvents("event");
 
-        verify(emailService).sendHtml(eq("sender@example.com"), eq("Transfer Successful"), anyString());
+        verify(emailService).sendHtml(eq("sender@example.com"), eq("Money Sent"), anyString());
         verify(emailService).sendHtml(eq("receiver@example.com"), eq("Money Received"), anyString());
     }
 
     @Test
-    void rewardEventUsesDefaultValuesWhenMissingOptionalFields() throws Exception {
+    void rewardEventOmitsReferenceWhenMissing() throws Exception {
+        when(objectMapper.readValue("event", Map.class)).thenReturn(Map.of(
+                "event", "POINTS_EARNED",
+                "userId", 9,
+                "amount", "50",
+                "balance", "1187"
+        ));
+        when(userClient.getProfile(9L)).thenReturn(UserDTO.builder().email("reward@example.com").build());
+
+        notificationConsumer.rewardEvents("event");
+
+        ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendHtml(eq("reward@example.com"), eq("Points Earned"), htmlCaptor.capture());
+
+        String html = htmlCaptor.getValue();
+        assertTrue(html.contains("50 pts"));
+        assertTrue(html.contains("1187 pts"));
+        assertFalse(html.contains("N/A"));
+        assertFalse(html.contains(">Reference<"));
+    }
+
+    @Test
+    void rewardEventStillShowsUsefulZeroValues() throws Exception {
         when(objectMapper.readValue("event", Map.class))
                 .thenReturn(Map.of("event", "POINTS_EARNED", "userId", 9));
         when(userClient.getProfile(9L)).thenReturn(UserDTO.builder().email("reward@example.com").build());
@@ -76,9 +100,12 @@ class NotificationConsumerTest {
         notificationConsumer.rewardEvents("event");
 
         ArgumentCaptor<String> htmlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(emailService).sendHtml(eq("reward@example.com"), eq("Reward Points Earned"), htmlCaptor.capture());
-        assertTrue(htmlCaptor.getValue().contains("₹0"));
-        assertTrue(htmlCaptor.getValue().contains("N/A"));
+        verify(emailService).sendHtml(eq("reward@example.com"), eq("Points Earned"), htmlCaptor.capture());
+
+        String html = htmlCaptor.getValue();
+        assertTrue(html.contains("0 pts"));
+        assertTrue(html.contains("What to do next"));
+        assertFalse(html.contains("N/A"));
     }
 
     @Test

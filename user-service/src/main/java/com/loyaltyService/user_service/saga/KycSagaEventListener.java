@@ -1,7 +1,7 @@
 package com.loyaltyService.user_service.saga;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.loyaltyService.user_service.client.RewardsServiceClient;
+import com.loyaltyService.user_service.client.RewardServiceClient;
 import com.loyaltyService.user_service.client.WalletServiceClient;
 import com.loyaltyService.user_service.service.KafkaProducerService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class KycSagaEventListener {
     private static final String KYC_SAGA_COMPLETED = "KYC_SAGA_COMPLETED";
 
     private final WalletServiceClient walletServiceClient;
-    private final RewardsServiceClient rewardsServiceClient;
+    private final RewardServiceClient rewardServiceClient;
     private final KafkaProducerService kafkaProducer;
     private final ObjectMapper objectMapper;
 
@@ -66,7 +66,7 @@ public class KycSagaEventListener {
 
             // Step 2: create reward account
             try {
-                rewardsServiceClient.createRewardAccount(userId);
+                rewardServiceClient.createAccount(userId);
                 rewardCreated = true;
                 log.info("[KYC-SAGA] Reward account created for userId={}", userId);
             } catch (Exception e) {

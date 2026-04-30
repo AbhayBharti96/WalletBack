@@ -1,7 +1,7 @@
 package com.loyaltyService.user_service.saga;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.loyaltyService.user_service.client.RewardsServiceClient;
+import com.loyaltyService.user_service.client.RewardServiceClient;
 import com.loyaltyService.user_service.client.WalletServiceClient;
 import com.loyaltyService.user_service.service.KafkaProducerService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,7 +26,7 @@ class KycSagaEventListenerTest {
     private WalletServiceClient walletServiceClient;
 
     @Mock
-    private RewardsServiceClient rewardsServiceClient;
+    private RewardServiceClient rewardServiceClient;
 
     @Mock
     private KafkaProducerService kafkaProducer;
@@ -49,7 +49,7 @@ class KycSagaEventListenerTest {
         listener.onKycEvent(record);
 
         verify(walletServiceClient, times(1)).createWallet(1L);
-        verify(rewardsServiceClient, times(1)).createRewardAccount(1L);
+        verify(rewardServiceClient, times(1)).createAccount(1L);
         verify(kafkaProducer, times(1)).send(eq("kyc-events"), any(Map.class));
     }
 
@@ -66,7 +66,7 @@ class KycSagaEventListenerTest {
         listener.onKycEvent(record);
 
         verify(walletServiceClient, times(1)).createWallet(1L);
-        verify(rewardsServiceClient, times(1)).createRewardAccount(1L); // Still runs step 2
+        verify(rewardServiceClient, times(1)).createAccount(1L); // Still runs step 2
         verify(kafkaProducer, times(1)).send(eq("kyc-events"),
                 argThat(argument -> "KYC_SAGA_FAILED".equals(((Map<String, Object>) argument).get("event"))));
     }
@@ -82,6 +82,6 @@ class KycSagaEventListenerTest {
         ConsumerRecord<String, String> record = new ConsumerRecord<>("kyc-events", 0, 0, "key", "dummyPayload");
         listener.onKycEvent(record);
 
-        verifyNoInteractions(walletServiceClient, rewardsServiceClient, kafkaProducer);
+        verifyNoInteractions(walletServiceClient, rewardServiceClient, kafkaProducer);
     }
 }

@@ -1,6 +1,7 @@
 package com.loyaltyService.user_service.service.impl;
 
 import com.loyaltyService.user_service.client.WalletServiceClient;
+import com.loyaltyService.user_service.client.RewardServiceClient;
 import com.loyaltyService.user_service.dto.KycStatusResponse;
 import com.loyaltyService.user_service.entity.AuditLog;
 import com.loyaltyService.user_service.entity.KycDetail;
@@ -39,6 +40,7 @@ public class KycServiceImpl implements KycService {
     private final KycRepository       kycRepo;
     private final AuditLogRepository  auditRepo;
     private final WalletServiceClient walletServiceClient;
+    private final RewardServiceClient rewardServiceClient;
     private final KafkaProducerService kafkaProducer;
     private final KycMapper kycMapper;
     private final CloudinaryService cloudinaryService;
@@ -76,11 +78,16 @@ public class KycServiceImpl implements KycService {
             String filePath = null;
 
             if (docFile != null && !docFile.isEmpty()) {
-                filePath = cloudinaryService.uploadFile(
-                        docFile,
-                        userId,
-                        docType.name()
-                );
+                try {
+                    filePath = cloudinaryService.uploadFile(
+                            docFile,
+                            userId,
+                            docType.name()
+                    );
+                } catch (RuntimeException ex) {
+                    log.error("KYC document upload failed for userId={}, docType={}", userId, docType, ex);
+                    throw ex;
+                }
             }
 
             KycDetail kyc = KycDetail.builder()
@@ -225,6 +232,13 @@ public class KycServiceImpl implements KycService {
             log.info("Wallet created for userId={} after KYC approval", userId);
         } catch (Exception e) {
             log.error("Failed to create wallet for userId={}", userId, e);
+        }
+
+        try {
+            rewardServiceClient.createAccount(userId);
+            log.info("Reward account created for userId={} after KYC approval", userId);
+        } catch (Exception e) {
+            log.error("Failed to create reward account for userId={}", userId, e);
         }
 
         log.info("KYC approved: kycId={}, userId={}, by={}", kyc.getId(), userId, adminEmail);

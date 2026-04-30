@@ -28,7 +28,7 @@ public class CloudinaryService {
 
             return uploadResult.get("secure_url").toString();
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Cloudinary upload failed", e);
         }
     }
